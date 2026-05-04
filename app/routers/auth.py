@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from app.utils.dependencies import get_current_user, get_current_admin
+
 from app.database import get_db
 from app.models.user_model import User
 from app.schemas.user_schema import UserCreate, UserResponse, Token
 from app.utils.security import hash_password, verify_password, create_access_token
-from app.utils.dependencies import get_current_user
+from app.utils.dependencies import get_current_user, get_current_admin
 
 router = APIRouter(
     prefix="/auth",
@@ -75,10 +75,9 @@ def get_my_profile(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/users", response_model=list[UserResponse])
-@router.get("/users", response_model=list[UserResponse])
 def get_users(
     db: Session = Depends(get_db),
-    current_admin = Depends(get_current_admin)
+    current_admin=Depends(get_current_admin)
 ):
     users = db.query(User).all()
     return users
