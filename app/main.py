@@ -3,10 +3,10 @@ from app.routers import product
 from app.routers import category
 from app.database import Base, engine
 from app import models
-
+from app.routers import auth
 from app import models
 
-Base.metadata.create_all(bind=engine)
+##Base.metadata.create_all(bind=engine)
 
 
 
@@ -19,6 +19,7 @@ app = FastAPI(
 
 app.include_router(product.router)
 app.include_router(category.router)
+app.include_router(auth.router)
 
 
 @app.get("/")
