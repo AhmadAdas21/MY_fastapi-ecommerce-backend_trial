@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
-
+from app.utils.dependencies import get_current_admin
 from app.database import get_db
 from app.models.product_model import Product
 from app.models.category_model import Category
@@ -48,7 +48,8 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/")
-def create_product(product: ProductCreate, db: Session = Depends(get_db)):
+def create_product( product: ProductCreate,db: Session = Depends(get_db),current_admin = Depends(get_current_admin)
+):
     category = db.query(Category).filter(Category.id == product.category_id).first()
 
     if not category:
@@ -73,11 +74,10 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{product_id}")
-def update_product(
-    product_id: int,
-    updated_product: ProductUpdate,
-    db: Session = Depends(get_db)
+def update_product( product_id: int,updated_product: ProductUpdate, db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
 ):
+   
     product = db.query(Product).filter(
         Product.id == product_id,
         Product.is_active == True
@@ -107,7 +107,11 @@ def update_product(
 
 
 @router.delete("/{product_id}")
-def delete_product(product_id: int, db: Session = Depends(get_db)):
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
     product = db.query(Product).filter(
         Product.id == product_id,
         Product.is_active == True

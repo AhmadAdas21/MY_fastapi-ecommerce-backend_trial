@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-
+from app.utils.dependencies import get_current_admin
 from app.database import get_db
 from app.models.category_model import Category
 from app.schemas.category_schema import CategoryCreate, CategoryUpdate
@@ -28,11 +28,11 @@ def get_category(category_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/")
-def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
-    new_category = Category(
-        name=category.name,
-        description=category.description
-    )
+def create_category(
+    category: CategoryCreate,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
 
     db.add(new_category)
     db.commit()
@@ -48,7 +48,8 @@ def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
 def update_category(
     category_id: int,
     updated_category: CategoryUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
 ):
     category = db.query(Category).filter(Category.id == category_id).first()
 
@@ -70,7 +71,11 @@ def update_category(
 
 
 @router.delete("/{category_id}")
-def delete_category(category_id: int, db: Session = Depends(get_db)):
+def delete_category(
+    category_id: int,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
     category = db.query(Category).filter(Category.id == category_id).first()
 
     if not category:
