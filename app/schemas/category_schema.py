@@ -6,7 +6,9 @@ class CategoryCreate(BaseModel):
     name: str = Field(..., min_length=2)
     description: Optional[str] = None
 
+  
 
+  
 class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2)
     description: Optional[str] = None
