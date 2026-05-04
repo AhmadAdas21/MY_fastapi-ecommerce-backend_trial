@@ -1,4 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models.category_model import Category
 from app.schemas.category_schema import CategoryCreate, CategoryUpdate
 
 router = APIRouter(
@@ -6,48 +10,33 @@ router = APIRouter(
     tags=["Categories"]
 )
 
-categories = [
-    {
-        "id": 1,
-        "name": "Electronics",
-        "description": "Electronic devices and accessories"
-    },
-    {
-        "id": 2,
-        "name": "Clothes",
-        "description": "Clothing products"
-    }
-]
-
-next_category_id = 3
-
 
 @router.get("/")
-def get_categories():
+def get_categories(db: Session = Depends(get_db)):
+    categories = db.query(Category).all()
     return categories
 
 
 @router.get("/{category_id}")
-def get_category(category_id: int):
-    for category in categories:
-        if category["id"] == category_id:
-            return category
+def get_category(category_id: int, db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == category_id).first()
 
-    raise HTTPException(status_code=404, detail="Category not found")
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    return category
 
 
 @router.post("/")
-def create_category(category: CategoryCreate):
-    global next_category_id
+def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
+    new_category = Category(
+        name=category.name,
+        description=category.description
+    )
 
-    new_category = {
-        "id": next_category_id,
-        "name": category.name,
-        "description": category.description
-    }
-
-    categories.append(new_category)
-    next_category_id += 1
+    db.add(new_category)
+    db.commit()
+    db.refresh(new_category)
 
     return {
         "message": "Category created successfully",
@@ -56,29 +45,40 @@ def create_category(category: CategoryCreate):
 
 
 @router.put("/{category_id}")
-def update_category(category_id: int, updated_category: CategoryUpdate):
-    for category in categories:
-        if category["id"] == category_id:
-            update_data = updated_category.model_dump(exclude_unset=True)
+def update_category(
+    category_id: int,
+    updated_category: CategoryUpdate,
+    db: Session = Depends(get_db)
+):
+    category = db.query(Category).filter(Category.id == category_id).first()
 
-            for key, value in update_data.items():
-                category[key] = value
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
 
-            return {
-                "message": "Category updated successfully",
-                "category": category
-            }
+    update_data = updated_category.model_dump(exclude_unset=True)
 
-    raise HTTPException(status_code=404, detail="Category not found")
+    for key, value in update_data.items():
+        setattr(category, key, value)
+
+    db.commit()
+    db.refresh(category)
+
+    return {
+        "message": "Category updated successfully",
+        "category": category
+    }
 
 
 @router.delete("/{category_id}")
-def delete_category(category_id: int):
-    for category in categories:
-        if category["id"] == category_id:
-            categories.remove(category)
-            return {
-                "message": "Category deleted successfully"
-            }
+def delete_category(category_id: int, db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == category_id).first()
 
-    raise HTTPException(status_code=404, detail="Category not found")
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    db.delete(category)
+    db.commit()
+
+    return {
+        "message": "Category deleted successfully"
+    }

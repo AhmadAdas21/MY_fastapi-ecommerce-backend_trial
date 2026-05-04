@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from app.routers import product
-
 from app.routers import category
+from app.database import Base, engine
+from app import models
+
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(
     title="E-commerce Backend API",
     description="My first FastAPI e-commerce backend project",
@@ -9,8 +13,8 @@ app = FastAPI(
 )
 
 app.include_router(product.router)
-
 app.include_router(category.router)
+
 
 @app.get("/")
 def home():
