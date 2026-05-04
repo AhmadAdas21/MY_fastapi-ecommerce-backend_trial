@@ -1,4 +1,9 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models.product_model import Product
+from app.models.category_model import Category
 from app.schemas.product_schema import ProductCreate, ProductUpdate
 
 router = APIRouter(
@@ -6,81 +11,60 @@ router = APIRouter(
     tags=["Products"]
 )
 
-products = [
-    {
-        "id": 1,
-        "name": "Laptop",
-        "description": "Gaming laptop",
-        "price": 1200,
-        "stock_quantity": 10,
-        "category_id": 1
-    },
-    {
-        "id": 2,
-        "name": "Headphones",
-        "description": "Wireless headphones",
-        "price": 150,
-        "stock_quantity": 25,
-        "category_id": 1
-    }
-]
-
-next_product_id = 3
-
 
 @router.get("/")
 def get_products(
     search: str | None = None,
     min_price: float | None = Query(default=None, ge=0),
-    max_price: float | None = Query(default=None, ge=0)
+    max_price: float | None = Query(default=None, ge=0),
+    db: Session = Depends(get_db)
 ):
-    result = products
+    query = db.query(Product).filter(Product.is_active == True)
 
     if search:
-        result = [
-            product for product in result
-            if search.lower() in product["name"].lower()
-        ]
+        query = query.filter(Product.name.ilike(f"%{search}%"))
 
     if min_price is not None:
-        result = [
-            product for product in result
-            if product["price"] >= min_price
-        ]
+        query = query.filter(Product.price >= min_price)
 
     if max_price is not None:
-        result = [
-            product for product in result
-            if product["price"] <= max_price
-        ]
+        query = query.filter(Product.price <= max_price)
 
-    return result
+    products = query.all()
+    return products
 
 
 @router.get("/{product_id}")
-def get_product(product_id: int):
-    for product in products:
-        if product["id"] == product_id:
-            return product
+def get_product(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.is_active == True
+    ).first()
 
-    raise HTTPException(status_code=404, detail="Product not found")
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return product
 
 
 @router.post("/")
-def create_product(product: ProductCreate):
-    global next_product_id
+def create_product(product: ProductCreate, db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == product.category_id).first()
 
-    new_product = {
-        "id": next_product_id,
-        "name": product.name,
-        "description": product.description,
-        "price": product.price,
-        "stock_quantity": product.stock_quantity,
-        "category_id": product.category_id
-    }
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
 
-    products.append(new_product)
-    next_product_id += 1
+    new_product = Product(
+        name=product.name,
+        description=product.description,
+        price=product.price,
+        stock_quantity=product.stock_quantity,
+        category_id=product.category_id
+    )
+
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)
 
     return {
         "message": "Product created successfully",
@@ -89,29 +73,53 @@ def create_product(product: ProductCreate):
 
 
 @router.put("/{product_id}")
-def update_product(product_id: int, updated_product: ProductUpdate):
-    for product in products:
-        if product["id"] == product_id:
-            update_data = updated_product.model_dump(exclude_unset=True)
+def update_product(
+    product_id: int,
+    updated_product: ProductUpdate,
+    db: Session = Depends(get_db)
+):
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.is_active == True
+    ).first()
 
-            for key, value in update_data.items():
-                product[key] = value
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
 
-            return {
-                "message": "Product updated successfully",
-                "product": product
-            }
+    update_data = updated_product.model_dump(exclude_unset=True)
 
-    raise HTTPException(status_code=404, detail="Product not found")
+    if "category_id" in update_data:
+        category = db.query(Category).filter(Category.id == update_data["category_id"]).first()
+
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found")
+
+    for key, value in update_data.items():
+        setattr(product, key, value)
+
+    db.commit()
+    db.refresh(product)
+
+    return {
+        "message": "Product updated successfully",
+        "product": product
+    }
 
 
 @router.delete("/{product_id}")
-def delete_product(product_id: int):
-    for product in products:
-        if product["id"] == product_id:
-            products.remove(product)
-            return {
-                "message": "Product deleted successfully"
-            }
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.is_active == True
+    ).first()
 
-    raise HTTPException(status_code=404, detail="Product not found")
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    product.is_active = False
+
+    db.commit()
+
+    return {
+        "message": "Product deleted successfully"
+    }

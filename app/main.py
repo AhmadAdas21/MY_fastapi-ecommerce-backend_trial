@@ -4,8 +4,13 @@ from app.routers import category
 from app.database import Base, engine
 from app import models
 
+from app import models
+
 Base.metadata.create_all(bind=engine)
 
+
+
+Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="E-commerce Backend API",
     description="My first FastAPI e-commerce backend project",
