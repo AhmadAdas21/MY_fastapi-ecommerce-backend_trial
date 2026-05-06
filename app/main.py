@@ -5,7 +5,7 @@ from app.database import Base, engine
 from app import models
 from app.routers import auth
 from app import models
-
+from app.routers import cart
 ##Base.metadata.create_all(bind=engine)
 
 
@@ -20,6 +20,7 @@ app = FastAPI(
 app.include_router(product.router)
 app.include_router(category.router)
 app.include_router(auth.router)
+app.include_router(cart.router)
 
 
 @app.get("/")
