@@ -8,7 +8,7 @@ from app import models
 from app.routers import cart
 ##Base.metadata.create_all(bind=engine)
 
-
+from app.routers import orders
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI(
@@ -21,7 +21,7 @@ app.include_router(product.router)
 app.include_router(category.router)
 app.include_router(auth.router)
 app.include_router(cart.router)
-
+app.include_router(orders.router)
 
 @app.get("/")
 def home():
