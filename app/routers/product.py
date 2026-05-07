@@ -19,6 +19,8 @@ def get_products(
     search: str | None = None,
     min_price: float | None = Query(default=None, ge=0),
     max_price: float | None = Query(default=None, ge=0),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=10, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
     query = db.query(Product).filter(Product.is_active == True)
@@ -32,9 +34,21 @@ def get_products(
     if max_price is not None:
         query = query.filter(Product.price <= max_price)
 
-    products = query.all()
-    return products
+    total_items = query.count()
 
+    skip = (page - 1) * limit
+
+    products = query.offset(skip).limit(limit).all()
+
+    total_pages = (total_items + limit - 1) // limit
+
+    return {
+        "page": page,
+        "limit": limit,
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "items": products
+    }
 
 @router.get("/{product_id}")
 def get_product(product_id: int, db: Session = Depends(get_db)):
