@@ -11,4 +11,5 @@ class Product(Base):
     price = Column(Float, nullable=False)
     stock_quantity = Column(Integer, nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
+    image_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)

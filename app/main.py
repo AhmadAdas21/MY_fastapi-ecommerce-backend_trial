@@ -9,14 +9,14 @@ from app.routers import cart
 ##Base.metadata.create_all(bind=engine)
 
 from app.routers import orders
-
+from fastapi.staticfiles import StaticFiles
 Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="E-commerce Backend API",
     description="My first FastAPI e-commerce backend project",
     version="1.0.0"
 )
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(product.router)
 app.include_router(category.router)
 app.include_router(auth.router)

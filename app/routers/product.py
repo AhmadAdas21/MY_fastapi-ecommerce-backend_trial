@@ -5,7 +5,9 @@ from app.database import get_db
 from app.models.product_model import Product
 from app.models.category_model import Category
 from app.schemas.product_schema import ProductCreate, ProductUpdate
-
+import os
+import uuid
+from fastapi import UploadFile, File
 router = APIRouter(
     prefix="/products",
     tags=["Products"]
@@ -126,4 +128,43 @@ def delete_product(
 
     return {
         "message": "Product deleted successfully"
+    }
+
+
+@router.post("/{product_id}/image")
+def upload_product_image(
+    product_id: int,
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_admin=Depends(get_current_admin)
+):
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.is_active == True
+    ).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    if not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    upload_folder = "static/product_images"
+    os.makedirs(upload_folder, exist_ok=True)
+
+    file_extension = os.path.splitext(image.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(upload_folder, unique_filename)
+
+    with open(file_path, "wb") as file:
+        file.write(image.file.read())
+
+    product.image_url = f"/static/product_images/{unique_filename}"
+
+    db.commit()
+    db.refresh(product)
+
+    return {
+        "message": "Product image uploaded successfully",
+        "product": product
     }
